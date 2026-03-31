@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.DS_Store
+cv_service/data/*.mp4
+cv_service/data/*.avi
+.pytest_cache/
+.coverage
+dist/
+build/
+*.log
