@@ -230,6 +230,53 @@ def build_kafka_payload(
     return payload
 
 
+def generate_fallback_video(video_path: Path) -> None:
+    """
+    Generate a simple fallback video if no input is provided.
+    Creates a minimal synthetic video for testing.
+    """
+    try:
+        logger.info(f"Generating fallback test video: {video_path}")
+        
+        # Create directory if needed
+        video_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Create simple video with basic motion
+        cap = cv2.VideoCapture(0)  # Try to open camera (dummy)
+        cap.release()
+        
+        fps = 15
+        width, height = 640, 480
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(str(video_path), fourcc, fps, (width, height))
+        
+        duration_frames = fps * 30  # 30 seconds
+        
+        logger.info(f"Creating 30-second test video...")
+        for frame_idx in range(duration_frames):
+            frame = np.zeros((height, width, 3), dtype=np.uint8)
+            
+            # Add grid
+            for x in range(0, width, 80):
+                cv2.line(frame, (x, 0), (x, height), (30, 30, 30), 1)
+            
+            # Simulate motion
+            y_offset = int(30 * np.sin(2 * np.pi * frame_idx / (fps * 3)))
+            cv2.rectangle(frame, (100, 200 + y_offset), (220, 300 + y_offset), (50, 150, 200), 2)
+            cv2.putText(
+                frame, "EX-001", (110, 220 + y_offset),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (50, 150, 200), 1
+            )
+            
+            out.write(frame)
+        
+        out.release()
+        logger.info(f"Fallback video created: {video_path}")
+    
+    except Exception as e:
+        logger.error(f"Failed to generate fallback video: {e}")
+
+
 def main():
     """Main processing loop."""
     global shutdown_requested, frame_count
@@ -250,8 +297,11 @@ def main():
         # Check video source
         video_path = Path(VIDEO_SOURCE)
         if not video_path.exists():
-            logger.error(f"Video source not found: {VIDEO_SOURCE}")
-            sys.exit(1)
+            logger.warning(f"Video source not found: {VIDEO_SOURCE}, generating fallback test video")
+            generate_fallback_video(video_path)
+            if not video_path.exists():
+                logger.error(f"Failed to generate test video: {VIDEO_SOURCE}")
+                sys.exit(1)
         
         # Initialize components
         logger.info("Initializing CV components...")
